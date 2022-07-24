@@ -146,6 +146,8 @@ if __name__ == "__main__":
     parser.add_argument('--limit', help='Number of URLs to traverse', type=int, default=1000, action='store', required=True)
     parser.add_argument('--out', help='Number of URLs to traverse', type=str, action='store')
 
+    # --url and --limit are marked as required, so the program will exit if they are not specified
+    # TODO: make them optional and print the help message if they are not specified, then exit
     # ensure that no args is a help call
     # if len(sys.argv)==1:
     #     parser.print_help(sys.stderr)
@@ -158,19 +160,6 @@ if __name__ == "__main__":
     if not arguments.url.startswith('https://') and not arguments.url.startswith('http://'):
         print('No schema detected, attempting to use http://')
         url = 'http://' + arguments.url
-    # use publicsuffixlist to get domain from url
-    # url = arguments.url.split('//')[1].split('/')[0]
-    # domain = PublicSuffixList().privatesuffix(url)
-
-    # regex to select domain from url
-    # domain = arguments.url.split('//')[1].split('/')[0]
-
-    # 
-
-    # print("Domain: ", domain)
-
-
-    
 
     print("Starting URL: " + url)
     print("Limit: " + str(arguments.limit))
