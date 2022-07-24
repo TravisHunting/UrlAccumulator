@@ -5,8 +5,6 @@ import requests
 from bs4 import BeautifulSoup as bs
 from collections import deque
 import json
-from publicsuffixlist import PublicSuffixList
-
 
 # JSON Encoder class for serializing sets
 class SetEncoder(json.JSONEncoder):
