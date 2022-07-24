@@ -54,7 +54,7 @@ def scrapeHyperlinksFromURL(url):
     # find all the hyperlinks in the html
     hyperlinks = soup.find_all('a')
     # create a list of hyperlinks
-    hyperlinkList = []
+    hyperlinkset = set()
     # iterate through the hyperlinks
     for link in hyperlinks:
         if link.get('href') != None:
@@ -67,10 +67,10 @@ def scrapeHyperlinksFromURL(url):
             # Clean up the link
             cleanedLink = cleanLink(link, url)
             
-            hyperlinkList.append(cleanedLink)
+            hyperlinkset.add(cleanedLink)
 
     # return the list of hyperlinks
-    return hyperlinkList
+    return hyperlinkset
 
 def runScrape(startUrl, limit, out=None):
     count = 0
@@ -89,7 +89,7 @@ def runScrape(startUrl, limit, out=None):
             visitedlinks.add(link)
             
             print("Scraping: " + link)
-            pagelinks = scrapeHyperlinksFromURL(link)
+            pagelinks = list(scrapeHyperlinksFromURL(link))
             
             # Add data to the result dictionary
             if link not in resultDict:
