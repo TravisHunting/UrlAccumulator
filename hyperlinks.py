@@ -2,9 +2,7 @@
 
 import argparse
 import requests
-# import sys
 from bs4 import BeautifulSoup as bs
-# from publicsuffixlist import PublicSuffixList
 from collections import deque
 import json
 
