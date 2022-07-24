@@ -9,14 +9,21 @@ from collections import deque
 import json
 
 
+# JSON Encoder class for serializing sets
+class SetEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, set):
+            return list(obj)
+        return json.JSONEncoder.default(self, obj)
+
 # Save results to JSON file "out"
 def saveToJSON(resultDict, out):
     if out[-5:] == ".json":
         with open(out, 'w') as f:
-            json.dump(resultDict, f, indent=4)
+            json.dump(resultDict, f, indent=4, cls=SetEncoder)
     else:      
         with open(out + ".json", "w") as f:
-            json.dump(resultDict, f, indent=4)
+            json.dump(resultDict, f, indent=4, cls=SetEncoder)
 
 # Clean links to remove parameters and fragments
 def cleanLink(link, url):
@@ -50,13 +57,14 @@ def scrapeHyperlinksFromURL(url):
     for link in hyperlinks:
         if link.get('href') != None:
             link = link.get('href')
+
+            # Skip same-page links
+            if link[0] == "#":
+                continue
+            
             # Clean up the link
             cleanedLink = cleanLink(link, url)
             
-            # Skip same-page links
-            if cleanedLink[0] == "#":
-                continue
-
             hyperlinkList.append(cleanedLink)
 
     # return the list of hyperlinks
@@ -105,11 +113,12 @@ def runScrape(startUrl, limit, out=None):
         # Create dictionary entries with incoming data for all scraped links
         for outgoinglink in pagelinks:
             if outgoinglink not in resultDict:
-                resultDict[outgoinglink] = {"incoming": [link]}
+                # Using sets because some sites (facebook for example) love linking to their own pages... hundreds of times....
+                resultDict[outgoinglink] = {"incoming": set([link])}
             elif "incoming" not in resultDict[outgoinglink]:
-                resultDict[outgoinglink]["incoming"] = [link]
+                resultDict[outgoinglink]["incoming"] = set([link])
             else:
-                resultDict[outgoinglink]["incoming"].append(link)
+                resultDict[outgoinglink]["incoming"].add(link)
 
         # If the queue is empty, we're done
         if len(hyperlinks) == 0:
