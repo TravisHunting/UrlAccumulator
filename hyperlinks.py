@@ -2,15 +2,41 @@
 
 import argparse
 import requests
-import sys
+# import sys
 from bs4 import BeautifulSoup as bs
-from publicsuffixlist import PublicSuffixList
+# from publicsuffixlist import PublicSuffixList
 from collections import deque
 import json
 
 
+# Save results to JSON file "out"
+def saveToJSON(resultDict, out):
+    if out[-5:] == ".json":
+        with open(out, 'w') as f:
+            json.dump(resultDict, f, indent=4)
+    else:      
+        with open(out + ".json", "w") as f:
+            json.dump(resultDict, f, indent=4)
 
-# a function that extracts hyperlinks using requests from a given url
+# Clean links to remove parameters and fragments
+def cleanLink(link, url):
+    if link[0:2] == "//":
+        cleanedLink = "http:" + link
+    elif link[0:1] == "/" or "//" not in link:
+        if url[-1] == "/":
+            cleanedLink = url + link[1:]
+        else:
+            cleanedLink = url + link
+    else:
+        cleanedLink = link
+
+    if "?" in cleanedLink:
+        cleanedLink = cleanedLink.split("?")[0]
+    
+    return cleanedLink
+    
+    
+# Extract hyperlinks from a URL
 def scrapeHyperlinksFromURL(url):
     # get the html from the url
     html = requests.get(url).text
@@ -22,29 +48,26 @@ def scrapeHyperlinksFromURL(url):
     hyperlinkList = []
     # iterate through the hyperlinks
     for link in hyperlinks:
-        # if the link is not empty
         if link.get('href') != None:
-            # add the link to the list
-            cleanedLink = link.get('href')
-            if cleanedLink[0:2] == "//":
-                cleanedLink = "http:" + cleanedLink
-            elif cleanedLink[0:1] == "/":
-                if url[-1] == "/":
-                    cleanedLink = url + cleanedLink[1:]
-                else:
-                    cleanedLink = url + cleanedLink
+            link = link.get('href')
+            # Clean up the link
+            cleanedLink = cleanLink(link, url)
+            
+            # Skip same-page links
+            if cleanedLink[0] == "#":
+                continue
+
             hyperlinkList.append(cleanedLink)
+
     # return the list of hyperlinks
     return hyperlinkList
 
 
-def runScrape(startUrl, limit):
+def runScrape(startUrl, limit, out=None):
     count = 0
     # url = startUrl
     hyperlinks = deque()
     hyperlinks.append(startUrl)
-
-    # print(hyperlinks)
 
     visitedlinks = set()
 
@@ -52,8 +75,7 @@ def runScrape(startUrl, limit):
 
     while count < limit:
         link = hyperlinks[0]
-        if link[0:2] == "//":
-            link = "http:" + link
+
         # Don't scrape the same URL twice
         if link not in visitedlinks:
             visitedlinks.add(link)
@@ -61,6 +83,7 @@ def runScrape(startUrl, limit):
             print("Scraping: " + link)
             pagelinks = scrapeHyperlinksFromURL(link)
             
+            # Add data to the result dictionary
             if link not in resultDict:
                 resultDict[link] = {"outgoing": pagelinks}
             elif "outgoing" not in resultDict[link]:
@@ -71,11 +94,15 @@ def runScrape(startUrl, limit):
 
             # Track total number of scrapes
             count += 1
-            print("Scraped " + str(count) + " pages")
+            if count == 1:
+                print("Scraped " + str(count) + " page")
+            else:
+                print("Scraped " + str(count) + " pages")
 
         # Remove the processed URL
         hyperlinks.popleft()
 
+        # Create dictionary entries with incoming data for all scraped links
         for outgoinglink in pagelinks:
             if outgoinglink not in resultDict:
                 resultDict[outgoinglink] = {"incoming": [link]}
@@ -88,9 +115,12 @@ def runScrape(startUrl, limit):
         if len(hyperlinks) == 0:
             break
     
-    with open("links.json", "w") as write_file:
-        json.dump(resultDict, write_file, indent=4)
-    
+    # Write results to json file, or stdout if no output file is specified
+    if out is not None:
+        saveToJSON(resultDict, out)
+    else:
+        print(resultDict)
+
     return resultDict
 
 
@@ -101,15 +131,16 @@ if __name__ == "__main__":
                     finding all outgoing links (<a> tag): it will store each outgoing link \
                     for the URL, and then repeat the process for each of them, until \
                     --limit URLs will have been traversed.', 
-                    epilog='Example: hyperlinks.py https://docs.python.org/')
+                    epilog='Example: hyperlinks.py --url https://docs.python.org/ --limit 10 --out links.json')
 
-    parser.add_argument('--url', help='Starting URL')
-    parser.add_argument('--limit', help='Number of URLs to traverse', type=int, default=1000, action='store')
+    parser.add_argument('--url', help='Starting URL', required=True)
+    parser.add_argument('--limit', help='Number of URLs to traverse', type=int, default=1000, action='store', required=True)
+    parser.add_argument('--out', help='Number of URLs to traverse', type=str, action='store')
 
     # ensure that no args is a help call
-    if len(sys.argv)==1:
-        parser.print_help(sys.stderr)
-        sys.exit(1)
+    # if len(sys.argv)==1:
+    #     parser.print_help(sys.stderr)
+    #     sys.exit(1)
 
     arguments = parser.parse_args()
 
@@ -135,5 +166,7 @@ if __name__ == "__main__":
     print("Starting URL: " + url)
     print("Limit: " + str(arguments.limit))
 
-
-    runScrape(url, arguments.limit)
+    if arguments.out:
+        runScrape(url, arguments.limit, arguments.out)
+    else:
+        runScrape(url, arguments.limit)
