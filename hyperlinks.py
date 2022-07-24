@@ -5,6 +5,7 @@ import requests
 from bs4 import BeautifulSoup as bs
 from collections import deque
 import json
+from publicsuffixlist import PublicSuffixList
 
 
 # JSON Encoder class for serializing sets
@@ -25,19 +26,22 @@ def saveToJSON(resultDict, out):
 
 # Clean links to remove parameters and fragments
 def cleanLink(link, url):
+    urlParts = url.split("//")
+    baseUrl = urlParts[0] + "//" + urlParts[1].split('/')[0]
+
     if link[0:2] == "//":
         cleanedLink = "http:" + link
     elif link[0:1] == "/" or "//" not in link:
-        if url[-1] == "/":
-            cleanedLink = url + link[1:]
-        else:
-            cleanedLink = url + link
+        cleanedLink = baseUrl + link
     else:
         cleanedLink = link
 
     if "?" in cleanedLink:
         cleanedLink = cleanedLink.split("?")[0]
     
+    if cleanedLink[-1] != "/":
+        cleanedLink += "/"
+
     return cleanedLink
     
 # Extract hyperlinks from a URL
@@ -70,7 +74,6 @@ def scrapeHyperlinksFromURL(url):
 
 def runScrape(startUrl, limit, out=None):
     count = 0
-    # url = startUrl
     hyperlinks = deque()
     hyperlinks.append(startUrl)
 
@@ -97,6 +100,16 @@ def runScrape(startUrl, limit, out=None):
             # Add the new links to the queue
             hyperlinks.extend(pagelinks)
 
+            # Create dictionary entries with incoming data for all scraped links
+            for outgoinglink in pagelinks:
+                if outgoinglink not in resultDict:
+                    # Using sets because some sites (facebook for example) love linking to their own pages... hundreds of times....
+                    resultDict[outgoinglink] = {"incoming": set([link])}
+                elif "incoming" not in resultDict[outgoinglink]:
+                    resultDict[outgoinglink]["incoming"] = set([link])
+                else:
+                    resultDict[outgoinglink]["incoming"].add(link)
+
             # Track total number of scrapes
             count += 1
             if count == 1:
@@ -106,16 +119,6 @@ def runScrape(startUrl, limit, out=None):
 
         # Remove the processed URL
         hyperlinks.popleft()
-
-        # Create dictionary entries with incoming data for all scraped links
-        for outgoinglink in pagelinks:
-            if outgoinglink not in resultDict:
-                # Using sets because some sites (facebook for example) love linking to their own pages... hundreds of times....
-                resultDict[outgoinglink] = {"incoming": set([link])}
-            elif "incoming" not in resultDict[outgoinglink]:
-                resultDict[outgoinglink]["incoming"] = set([link])
-            else:
-                resultDict[outgoinglink]["incoming"].add(link)
 
         # If the queue is empty, we're done
         if len(hyperlinks) == 0:
@@ -158,6 +161,14 @@ if __name__ == "__main__":
     if not arguments.url.startswith('https://') and not arguments.url.startswith('http://'):
         print('No schema detected, attempting to use http://')
         url = 'http://' + arguments.url
+
+    if not url.endswith('/'):
+        url = url + '/'
+
+    # url = arguments.url.split('//')[1].split('/')[0]
+    # domain = PublicSuffixList().privatesuffix(url)
+    # print(url)
+    # exit()
 
     print("Starting URL: " + url)
     print("Limit: " + str(arguments.limit))
