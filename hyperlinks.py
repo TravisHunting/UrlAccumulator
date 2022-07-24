@@ -40,11 +40,11 @@ def cleanLink(link, url):
     
     return cleanedLink
     
-    
 # Extract hyperlinks from a URL
 def scrapeHyperlinksFromURL(url):
     # get the html from the url
     html = requests.get(url).text
+
     # create a BeautifulSoup object from the html
     soup = bs(html, 'html.parser')
     # find all the hyperlinks in the html
@@ -67,7 +67,6 @@ def scrapeHyperlinksFromURL(url):
 
     # return the list of hyperlinks
     return hyperlinkList
-
 
 def runScrape(startUrl, limit, out=None):
     count = 0
@@ -126,6 +125,7 @@ def runScrape(startUrl, limit, out=None):
     if out is not None:
         saveToJSON(resultDict, out)
     else:
+        # TODO: pretty print
         print(resultDict)
 
     return resultDict
