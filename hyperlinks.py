@@ -163,13 +163,9 @@ if __name__ == "__main__":
     if not url.endswith('/'):
         url = url + '/'
 
-    # url = arguments.url.split('//')[1].split('/')[0]
-    # domain = PublicSuffixList().privatesuffix(url)
-    # print(url)
-    # exit()
-
     print("Starting URL: " + url)
     print("Limit: " + str(arguments.limit))
+    print()
 
     if arguments.out:
         runScrape(url, arguments.limit, arguments.out)
